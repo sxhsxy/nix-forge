@@ -32,8 +32,7 @@ nix-forge/
 │   └── authoring.md        # 新增模块速成指南
 ├── lib/                    # 跨模块共享的纯函数库
 │   ├── default.nix         # 库入口：导出全部 lib 函数
-│   ├── discovery.nix       # 模块自动发现（readDir 扫描）
-│   └── mkModule.nix        # 模块 meta 注入助手
+│   └── discovery.nix       # 模块自动发现（readDir 扫描）
 ├── modules/                # ★ 模块集合根
 │   ├── nixos/              #   NixOS 系统模块：一个目录一个模块
 │   │   └── forge-example/  #   示例模块（四件套）
@@ -68,7 +67,7 @@ modules/<category>/<name>/
 - `name` 为 kebab-case，全仓库唯一，同时是：
   - 目录名；
   - flake 导出名（`nixosModules.<name>` / `homeModules.<name>`）；
-  - 模块 `meta.name`。
+  - README 首行标题（`# <name>`）。
 - 目录内**必须**存在 `default.nix` —— 它是自动发现机制（§5）的识别标志，
   也是模块的入口。
 
@@ -82,7 +81,7 @@ modules/<category>/<name>/
 
 ```
 modules/<category>/<name>/
-├── default.nix   入口：imports 其余文件，声明 meta          【必须】
+├── default.nix   入口：imports 其余文件                        【必须】
 ├── options.nix   选项声明（纯声明，无副作用）                【可选】
 ├── config.nix    实现逻辑（读取 options，mkIf 守卫副作用）   【可选】
 └── README.md     模块文档                                    【推荐】
@@ -101,13 +100,6 @@ modules/<category>/<name>/
     ./options.nix
     ./config.nix
   ];
-
-  meta = {
-    name = "my-module";        # kebab-case，与目录名一致
-    category = "nixos";        # nixos | home
-    description = "一句话说明这个模块做什么";
-    doc = "docs/structure.md"; # 指向模块文档（README 或规范章节）
-  };
 }
 ```
 
@@ -117,8 +109,12 @@ modules/<category>/<name>/
    （写文件、fetch、exec、import 非纯内容）。副作用全部发生在 `config` 阶段。
 2. **config 用 mkIf 守卫**：所有对系统的改动（写文件、启服务、装包）必须包在
    `lib.mkIf cfg.enable { ... }` 里，`cfg = config.<namespace>` 在 let 中取出。
-3. **meta 必填且字段一致**：`name` / `category` / `description` / `doc` 四项，
-   手写或 `lib.mkModule` 自动注入二选一（见 `lib/mkModule.nix`）。
+3. **禁止自定义 meta 字段**：nixpkgs 对 `config.meta` 是严格校验的，只允许
+   `maintainers` / `doc` / `priority` 等已声明字段，模块里写
+   `meta.name` / `meta.category` 等自定义字段会在系统求值时直接报错
+   （`The option 'meta.xxx' does not exist`）。模块身份信息由目录结构
+   （`<category>/<name>`）与 README 承载；确需声明 `meta.maintainers` /
+   `meta.doc` 时只使用这些标准字段。
 4. **不 import 兄弟模块**：模块间要共享逻辑，下沉到 `lib/`（§6），禁止
    `import ../other-module/` 互相引用 —— 那会让模块失去独立可用的特性。
 
@@ -126,7 +122,7 @@ modules/<category>/<name>/
 
 | 对象 | 规范 | 示例 |
 | ---- | ---- | ---- |
-| 目录名 / 文件名 / 导出名 / `meta.name` | kebab-case | `forge-example` |
+| 目录名 / 文件名 / 导出名 / README 标题 | kebab-case | `forge-example` |
 | Nix 标识符 / 选项属性名 | lowerCamelCase | `services.forgeExample` |
 | 选项命名空间 | `services.<name>` / `programs.<name>` / `home.<name>` | `services.forgeExample` |
 

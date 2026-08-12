@@ -5,16 +5,11 @@
   ...
 }:
 # 模块入口。规范见 docs/structure.md §3（模块文件规范）。
+# 注意：不要写自定义 meta 字段（nixpkgs 严格校验 config.meta，只允许
+# maintainers/doc/priority 等已声明字段）；模块身份由目录名与 README 承载。
 {
   imports = [
     ./options.nix
     ./config.nix
   ];
-
-  meta = {
-    name = "my-module"; # ← 替换为你的模块名（kebab-case，与目录名一致）
-    category = "nixos"; # ← nixos | home
-    description = "一句话说明这个模块做什么";
-    doc = "docs/structure.md"; # ← 指向模块文档（README 或规范章节）
-  };
 }

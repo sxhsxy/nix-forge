@@ -21,7 +21,7 @@ nix flake init -t github:sxhsxy/nix-forge#module
 
 ```
 modules/<category>/<name>/
-├── default.nix   入口：imports options/config，声明 meta
+├── default.nix   入口：imports options/config
 ├── options.nix   选项声明（纯声明）
 ├── config.nix    实现逻辑（mkIf 守卫）
 └── README.md     模块文档
@@ -41,8 +41,8 @@ mv /tmp/new-module/* modules/<category>/<name>/
 1. **options.nix**：定义选项。命名空间 `services.<模块名>`，布尔开关用
    `lib.mkEnableOption`，字符串/枚举给好 `default` 与 `example`。
 2. **config.nix**：`let cfg = config.<命名空间>; in { config = lib.mkIf cfg.enable { ... }; }`。
-3. **default.nix**：`imports` 挂上 options/config，补 `meta` 四项
-   （name / category / description / doc）。
+3. **default.nix**：`imports` 挂上 options/config。模块顶层不要写自定义
+   meta 字段（nixpkgs 严格校验，见规范 §3 硬性规则 3）。
 4. **README.md**：选项表 + 使用示例 + 验证命令三节。
 
 ## 4. 验证（关键步骤！）
@@ -74,10 +74,10 @@ git commit -m "nixos/<name>: add <一句话>"
 
 ## 检查清单
 
-- [ ] 目录名 kebab-case、唯一，与 `meta.name`、导出名一致
+- [ ] 目录名 kebab-case、唯一，与导出名一致
 - [ ] `default.nix` 存在（自动发现的识别标志）
 - [ ] options 纯声明无副作用；config 全在 `mkIf` 里
-- [ ] `meta` 四项齐全
+- [ ] 模块顶层无自定义 meta 字段（nixpkgs 严格校验）
 - [ ] 模块间无互相 import（共享逻辑走 lib/）
 - [ ] README 三节齐全（选项表 / 使用 / 验证）
 - [ ] `git add` 后 `nix flake check` 通过

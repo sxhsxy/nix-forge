@@ -55,7 +55,7 @@ message = Hello from nix-forge!
 ## 文件
 
 ```
-default.nix   入口：imports options/config，声明 meta
+default.nix   入口：imports options/config
 options.nix   选项声明（纯声明，无副作用）
 config.nix    实现逻辑（lib.mkIf 守卫）
 README.md     本文档

@@ -7,5 +7,4 @@
 #   - 新增文件后必须在下面导出，并注明用途。
 {
   inherit (import ./discovery.nix { inherit lib; }) discoverModules discoverOverlays;
-  inherit (import ./mkModule.nix { inherit lib; }) mkModule;
 }

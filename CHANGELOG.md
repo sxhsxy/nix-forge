@@ -11,3 +11,4 @@
 - 新增模块速成指南（docs/authoring.md）
 - 示例模块 `forge-example`（NixOS 四件套）
 - 模块脚手架模板 `#module`
+- 决策：模块顶层禁止自定义 meta 字段（nixpkgs 对 config.meta 严格校验），模块身份由目录结构承载

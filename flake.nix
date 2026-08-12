@@ -46,7 +46,7 @@
     in
     {
       # ── 对外 API ───────────────────────────────────────────────
-      inherit forge-lib lib;
+      inherit lib;
 
       # 每个模块独立导出；default 为全部模块的合并（模块列表本身即合法模块）
       nixosModules = nixosModules // {
@@ -82,10 +82,15 @@
             shift
           fi
           if [ "$#" -eq 0 ]; then
-            files=$(git ls-files '*.nix')
+            candidates=$(git ls-files '*.nix')
           else
-            files="$@"
+            candidates="$@"
           fi
+          # 只处理磁盘上真实存在的文件（git ls-files 会包含已删除未提交的条目）
+          files=""
+          for f in $candidates; do
+            [ -f "$f" ] && files="$files $f"
+          done
           [ -z "$files" ] && exit 0
           exec ${pkgs.nixfmt}/bin/nixfmt $check $files
         ''
@@ -103,6 +108,9 @@
             pkgs.runCommand "nix-forge-module-eval"
               {
                 nativeBuildInputs = [ pkgs.nix ];
+                # 沙箱内 HOME 不可用会导致 nix-instantiate 尝试创建
+                # /nix/var/nix/profiles 而失败，显式给一个可写 HOME
+                HOME = "/tmp";
               }
               (
                 lib.concatMapStringsSep "\n" (f: "nix-instantiate --eval '${f}' >/dev/null") allModuleFiles
