@@ -4,10 +4,20 @@
   inputs = {
     # 与 mynixpkgs 系列保持一致：直接跟随 nixos-unstable
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # 双上下文模块（规范 §3.5）的真实 home-manager 集成验证
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      home-manager,
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -28,11 +38,14 @@
       # 规范见 docs/structure.md：
       #   modules/nixos/<name>/default.nix  → nixosModules.<name>
       #   modules/home/<name>/default.nix   → homeModules.<name>
+      #   modules/nixos/<name>/dual.nix     → 双上下文：同时注册 homeModules.<name>
       #   modules/overlays/<name>.nix       → overlays.<name>
       # ⚠️ flake 求值只打包 git 已跟踪的文件：新增模块后必须先 `git add`。
-      nixosModules = forge-lib.discoverModules ./. "nixos";
-      homeModules = forge-lib.discoverModules ./. "home";
-      overlays = forge-lib.discoverOverlays ./.;
+      nixosModuleSet = forge-lib.discoverModules ./. "nixos";
+      # home 模块 = modules/home/ 下模块 + modules/nixos/ 下带 dual.nix 标记的双上下文模块
+      homeModuleSet =
+        (forge-lib.discoverModules ./. "home") // (forge-lib.discoverDualModules ./. "nixos");
+      overlaySet = forge-lib.discoverOverlays ./.;
 
       # 全部模块入口文件（供冒烟检查使用）
       allModuleFiles =
@@ -45,22 +58,23 @@
         in
         entries "nixos"
         ++ entries "home"
-        ++ map (n: ./. + "/modules/overlays/${n}.nix") (builtins.attrNames overlays);
+        ++ map (n: ./. + "/modules/overlays/${n}.nix") (builtins.attrNames overlaySet);
     in
     {
       # ── 对外 API ───────────────────────────────────────────────
-      # lib = 本仓库的纯函数库（lib/ 目录），含 discoverModules / discoverOverlays
+      # lib = 本仓库的纯函数库（lib/ 目录），含 discoverModules /
+      # discoverDualModules / discoverOverlays
       lib = forge-lib;
 
       # 每个模块独立导出；default 为全部模块的合并（模块列表本身即合法模块）
-      nixosModules = nixosModules // {
-        default = builtins.attrValues nixosModules;
+      nixosModules = nixosModuleSet // {
+        default = builtins.attrValues nixosModuleSet;
       };
-      homeModules = homeModules // {
-        default = builtins.attrValues homeModules;
+      homeModules = homeModuleSet // {
+        default = builtins.attrValues homeModuleSet;
       };
-      overlays = overlays // {
-        default = nix-lib.composeManyExtensions (builtins.attrValues overlays);
+      overlays = overlaySet // {
+        default = nix-lib.composeManyExtensions (builtins.attrValues overlaySet);
       };
 
       # 脚手架：nix flake init -t github:sxhsxy/nix-forge#module

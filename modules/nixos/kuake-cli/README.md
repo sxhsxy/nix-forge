@@ -6,6 +6,10 @@
 - `kuake-mcp` —— kuake 的 MCP server（stdio），为 Claude Code 等 MCP 客户端
   提供 14 个夸克网盘操作工具。
 
+**双上下文模块**（规范 §3.5）：同一份代码同时注册为
+`nixosModules.kuake-cli` 与 `homeModules.kuake-cli`，config 按运行上下文分流：
+home-manager → `home.packages`；NixOS → `environment.systemPackages`。
+
 包定义迁移自 `mynixpkgs/kuake-cli`，**单一来源在 `modules/overlays/kuake-cli.nix`**
 （overlays/ 是仓库的包层；lib/ 禁 pkgs，modules/ 是配置层）。本模块以
 `(import ../../overlays/kuake-cli.nix) pkgs pkgs` 方式复用同一份包，改包只改
@@ -21,7 +25,7 @@ overlay 一处。
 
 ## 使用
 
-方式一：NixOS 模块（推荐，随系统升级/回滚）：
+方式一：NixOS 系统配置（装入 systemPackages）：
 
 ```nix
 # flake.nix —— 消费方
@@ -43,28 +47,34 @@ overlay 一处。
 }
 ```
 
-方式二：overlay（任意上下文：home-manager、nix shell 等）：
+方式二：home-manager 用户配置（装入 home.packages，同一份模块）：
 
 ```nix
-# flake.nix
+# home.nix —— home-manager 配置
+{ ... }:
 {
-  inputs.nix-forge.url = "github:sxhsxy/nix-forge";
-  outputs = { nixpkgs, nix-forge, ... }: {
-    nixpkgs.overlays = [ nix-forge.overlays.kuake-cli ];
-    # 之后 pkgs.kuake / pkgs.kuake-mcp 可用：
-    # home.packages = [ pkgs.kuake ];
-  };
+  imports = [ inputs.nix-forge.homeModules.kuake-cli ];
+  programs.kuakeCli.enable = true;
 }
+```
+
+方式三：overlay（任意上下文：home-manager、nix shell 等）：
+
+```nix
+nixpkgs.overlays = [ nix-forge.overlays.kuake-cli ];
+# 之后 pkgs.kuake / pkgs.kuake-mcp 可用
 ```
 
 ## 验证
 
 ```bash
 nix flake check                     # 冒烟检查：模块可求值
-nix build --impure --expr 'let f = builtins.getFlake (toString ./.);
-  pkgs = f.inputs.nixpkgs.legacyPackages.x86_64-linux;
-  in ((import ./modules/overlays/kuake-cli.nix) pkgs pkgs).kuake'
-./result/bin/kuake version          # 冒烟运行
+
+# NixOS 上下文：systemPackages 含 kuake
+nix eval --impure --expr 'let f = builtins.getFlake (toString ./.); s = f.inputs.nixpkgs.lib.nixosSystem { modules = [ { nixpkgs.hostPlatform = "x86_64-linux"; } f.nixosModules.kuake-cli { programs.kuakeCli.enable = true; } ]; }; in builtins.map (p: p.name) s.config.environment.systemPackages'
+
+# home-manager 上下文：home.packages 含 kuake（用 flake 的 home-manager 输入）
+nix eval --impure --expr 'let f = builtins.getFlake (toString ./.); pkgs = f.inputs.nixpkgs.legacyPackages.x86_64-linux; hm = f.inputs.home-manager.lib.homeManagerConfiguration { inherit pkgs; modules = [ f.homeModules.kuake-cli { programs.kuakeCli.enable = true; } { home = { username = "sxh"; homeDirectory = "/home/sxh"; stateVersion = "26.05"; }; } ]; }; in builtins.map (p: p.name) hm.config.home.packages'
 ```
 
 ## 文件
@@ -72,7 +82,8 @@ nix build --impure --expr 'let f = builtins.getFlake (toString ./.);
 ```
 default.nix   入口：imports options/config
 options.nix   选项声明（programs.kuakeCli.*）
-config.nix    实现逻辑（lib.mkIf 守卫）
+config.nix    双上下文实现（home.packages / environment.systemPackages 分流）
+dual.nix      双上下文标记（存在即同时注册 homeModules，见规范 §3.5）
 README.md     本文档
 ```
 

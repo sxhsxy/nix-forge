@@ -13,3 +13,4 @@
 - 模块脚手架模板 `#module`
 - 决策：模块顶层禁止自定义 meta 字段（nixpkgs 对 config.meta 严格校验），模块身份由目录结构承载
 - 新增 `kuake-cli`：overlay（kuake / kuake-mcp 包，自 mynixpkgs 迁移）+ NixOS 模块（`programs.kuakeCli`）
+- `kuake-cli` 改为双上下文模块（规范 §3.5）：dual.nix 标记 + `options ? home` 分流（勿用 `config ? home`，会无限递归），同时注册 `nixosModules` / `homeModules`；flake 新增 home-manager 输入用于集成验证；`lib.discoverDualModules`

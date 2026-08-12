@@ -35,9 +35,10 @@ nix-forge/
 │   └── discovery.nix       # 模块自动发现（readDir 扫描）
 ├── modules/                # ★ 模块集合根
 │   ├── nixos/              #   NixOS 系统模块：一个目录一个模块
-│   │   └── forge-example/  #   示例模块（四件套）
+│   │   ├── forge-example/  #   示例模块（四件套）
+│   │   └── kuake-cli/      #   双上下文模块（dual.nix 标记，同时注册 homeModules）
 │   ├── home/               #   home-manager 模块（暂无，见目录内 README）
-│   └── overlays/           #   overlay：一个文件一个
+│   └── overlays/           #   overlay：一个文件一个（kuake-cli 为新增包示例）
 ├── templates/              # nix flake 脚手架模板
 │   └── module/             #   新模块四件套模板
 └── tests/                  # 集成测试（NixOS VM），目录与模块一一对应
@@ -118,6 +119,44 @@ modules/<category>/<name>/
 4. **不 import 兄弟模块**：模块间要共享逻辑，下沉到 `lib/`（§6），禁止
    `import ../other-module/` 互相引用 —— 那会让模块失去独立可用的特性。
 
+## 3.5 双上下文模块（NixOS / home-manager 通用）
+
+同一份模块代码同时服务 NixOS 与 home-manager（典型场景：「往环境里装 CLI
+工具」这种两个上下文行为完全一致的模块），避免把 options 复制两份。
+
+### 约定
+
+1. 目录放 `modules/nixos/<name>/`（系统上下文为主），结构同 §3；
+2. 目录内放一个 **`dual.nix` 标记文件**（内容为说明注释），存在即声明
+   本模块为双上下文；
+3. flake 自动把它同时注册为 `nixosModules.<name>` 与 `homeModules.<name>`
+   （`lib.discoverDualModules`，见 §5）；两个 `default` 全量合并都会包含它；
+4. config 里按上下文分流（这是唯一的上下文相关代码）：
+
+```nix
+config = lib.mkIf cfg.enable (
+  if options ? home then
+    { home.packages = [ cfg.package ]; }                # home-manager 上下文
+  else
+    { environment.systemPackages = [ cfg.package ]; }   # NixOS 上下文
+);
+```
+
+### 判定规则与注意
+
+- **用 `options ? home` 而不是 `config ? home`**：`config ? home` 在 config
+  求值期查询 config 自身的属性集合，会触发无限递归（实测两个上下文都报
+  `infinite recursion encountered`）；`options ? home` 查询的是选项声明集合，
+  静态无递归；
+- `options ? home`：home-manager 模块系统声明了 `home` 选项 → 用户上下文；
+  NixOS 未声明 → 系统上下文；
+- NixOS + home-manager NixOS 模块的组合下，`home` 选项不在 NixOS 选项里
+  （home-manager 的 `home.*` 在其自己的模块系统中求值），检测为系统上下文，
+  属预期行为；
+- 双上下文模块禁止放 `modules/home/`（home 目录只放纯 home-manager 模块）。
+
+实例：`modules/nixos/kuake-cli/`（dual.nix 标记 + config.nix 分流）。
+
 ## 4. 命名规范
 
 | 对象 | 规范 | 示例 |
@@ -136,9 +175,10 @@ flake.nix 不手写模块清单，而是通过 `lib/discovery.nix` 扫描目录�
 
 ```nix
 # flake.nix（核心三行）
-nixosModules = forge-lib.discoverModules ./. "nixos";   # 扫描 modules/nixos/
-homeModules  = forge-lib.discoverModules ./. "home";    # 扫描 modules/home/
-overlays     = forge-lib.discoverOverlays ./.;          # 扫描 modules/overlays/*.nix
+nixosModuleSet = forge-lib.discoverModules ./. "nixos";  # 扫描 modules/nixos/
+homeModuleSet = (forge-lib.discoverModules ./. "home")   # 扫描 modules/home/
+  // (forge-lib.discoverDualModules ./. "nixos");        # + nixos/ 下带 dual.nix 的双上下文模块
+overlaySet = forge-lib.discoverOverlays ./.;             # 扫描 modules/overlays/*.nix
 ```
 
 由此自动得到：
@@ -147,6 +187,7 @@ overlays     = forge-lib.discoverOverlays ./.;          # 扫描 modules/overlay
 | -------------- | -------------- |
 | 新建 `modules/nixos/foo/default.nix` | `nixosModules.foo` |
 | 新建 `modules/home/bar/default.nix` | `homeModules.bar` |
+| 新建 `modules/nixos/foo/dual.nix`（双上下文，§3.5） | 额外注册 `homeModules.foo` |
 | 新建 `modules/overlays/baz.nix` | `overlays.baz` |
 | — | `nixosModules.default`（全部合并） |
 | — | `homeModules.default`（全部合并） |

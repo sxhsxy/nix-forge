@@ -30,6 +30,21 @@ in
       value = import (dir + "/${name}/default.nix");
     }) (filterAttrs isModuleDir (readDir dir));
 
+  # 扫描 <root>/modules/<category> 下含 dual.nix 标记的双上下文模块
+  # （规范见 docs/structure.md §3.5）：目录结构同 discoverModules，
+  # 额外要求目录内存在 dual.nix 标记文件；返回的模块会被 flake 同时
+  # 注册为 nixosModules.<name> 与 homeModules.<name>。
+  discoverDualModules =
+    root: category:
+    let
+      dir = root + "/modules/${category}";
+      isDualModule = name: type: type == "directory" && pathExists (dir + "/${name}/dual.nix");
+    in
+    mapAttrs' (name: _: {
+      inherit name;
+      value = import (dir + "/${name}/default.nix");
+    }) (filterAttrs isDualModule (readDir dir));
+
   # 扫描 <root>/modules/overlays 下所有 *.nix 文件，
   # 导出 { <文件名去后缀> = import <文件>; }。
   # 每个文件形如 final: prev: { ... }（标准 overlay）。
