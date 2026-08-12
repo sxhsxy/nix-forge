@@ -39,8 +39,17 @@ in
       dir = root + "/modules/overlays";
       isOverlayFile = name: type: type == "regular" && hasSuffix ".nix" name;
     in
-    mapAttrs' (name: _: {
-      name = removeSuffix ".nix" name;
-      value = import (dir + "/${name}.nix");
-    }) (filterAttrs isOverlayFile (readDir dir));
+    mapAttrs' (
+      name: _:
+      let
+        # 注意：不能直接 `{ name = removeSuffix ...; value = import ...${name}.nix }` ——
+        # 属性集内后一个绑定看到的 name 仍是 lambda 参数（未去后缀），
+        # 会拼出 <name>.nix.nix 的错误路径。
+        overlayName = removeSuffix ".nix" name;
+      in
+      {
+        name = overlayName;
+        value = import (dir + "/${overlayName}.nix");
+      }
+    ) (filterAttrs isOverlayFile (readDir dir));
 }

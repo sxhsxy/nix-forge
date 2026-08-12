@@ -182,7 +182,11 @@ flake 求值**只打包 git 已跟踪的文件**。新建/重命名/移动模块
 - 文件形如 `final: prev: { ... }`（标准 overlay）；
 - 每个 overlay 保持独立可用；`overlays.default` 按字母序组合全部；
 - 与某模块强相关的 overlay 建议同名（模块 `foo` → overlay `foo`），表达关联；
-- overlay 里只改写包属性，不写模块逻辑。
+- overlay 可改写现有包属性，也可**新增自定义包**（如 `kuake-cli`）；不写模块逻辑；
+- **包定义单一来源**：同一包同时被 overlay 与 NixOS 模块使用时，包定义放 overlay
+  文件（overlays/ 是仓库的包层；lib/ 禁 pkgs），模块以
+  `(import <overlay文件>) pkgs pkgs` 复用，改包只改一处
+  （见 `modules/nixos/kuake-cli/`）。
 
 ## 8. 测试规范
 
