@@ -35,8 +35,13 @@ in
       description = ''
         启动 kuake / kuake-mcp 前按序加载的 .env 文件列表（不覆盖已存在的环境变量）。
         路径中的 `$HOME` 与开头的 `~` 在运行时展开；文件缺失或不可读时静默跳过。
-        注意：类型是 str——不要使用 nix 的 path 字面量，否则文件会被拷贝进
-        /nix/store，cookie 会泄露给本机所有用户。建议文件权限 600。
+        注意：
+        - 类型是 str，且**必须加引号写成字符串**（如 `"~/secrets/kuake.env"`）——
+          裸写 `~/...` 会被 nix 当作路径字面量，纯模式下报
+          "the path '~/...' can not be resolved in pure mode"；
+        - 不要使用 nix 的 path 字面量（如 `/etc/kuake.env` 裸路径），否则文件会
+          被拷贝进 /nix/store，cookie 会泄露给本机所有用户。
+        建议文件权限 600。
       '';
     };
   };

@@ -48,8 +48,10 @@ kuake user    # 验证
 - 加载是**安全解析**（逐行 read，不 source / 不 eval），cookie 里的分号、
   引号不会被执行，无注入风险；
 - 路径支持 `$HOME` 与开头的 `~`（运行时展开）；文件缺失/不可读静默跳过；
-- 选项类型是 **str**，不要用 nix 的 path 字面量——path 会被拷贝进
-  /nix/store，cookie 就泄露了；
+- 选项类型是 **str**，且**必须加引号**（如 `"~/secrets/kuake.env"`）：裸写
+  `~/...` 会被 nix 当作路径字面量，纯模式下报 "can not be resolved in pure
+  mode"；也不要写无引号的绝对路径字面量——path 会被拷贝进 /nix/store，
+  cookie 就泄露了；
 - 文件权限建议 600；密钥文件由你自己管理（不要提交进 git 或 nix 配置，
   需要声明式密钥管理时用 sops-nix / agenix 与这里共存）。
 
