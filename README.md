@@ -48,7 +48,7 @@ nix-forge/
 
 ```bash
 nix flake check   # 冒烟检查：所有模块可求值
-nix fmt           # nixfmt-rfc-style 统一格式
+nix fmt           # nixfmt 统一格式（自动收集 git 已跟踪的 .nix 文件）
 nix flake show    # 查看自动聚合出的全部导出
 ```
 

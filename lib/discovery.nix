@@ -2,7 +2,14 @@
   lib,
 }:
 let
-  inherit (lib) filterAttrs hasSuffix mapAttrs' pathExists readDir removeSuffix;
+  inherit (lib)
+    filterAttrs
+    hasSuffix
+    mapAttrs'
+    pathExists
+    readDir
+    removeSuffix
+    ;
 in
 {
   # 扫描 <root>/modules/<category> 下所有「含 default.nix 的子目录」，
@@ -12,12 +19,11 @@ in
   #
   # ⚠️ flake 求值只看到 git 已跟踪的文件：新增模块后必须先 git add，
   #    否则 readDir 在 store 副本里看不到该目录。
-  discoverModules = root: category:
+  discoverModules =
+    root: category:
     let
       dir = root + "/modules/${category}";
-      isModuleDir =
-        name: type:
-        type == "directory" && pathExists (dir + "/${name}/default.nix");
+      isModuleDir = name: type: type == "directory" && pathExists (dir + "/${name}/default.nix");
     in
     mapAttrs' (name: _: {
       inherit name;
@@ -27,12 +33,11 @@ in
   # 扫描 <root>/modules/overlays 下所有 *.nix 文件，
   # 导出 { <文件名去后缀> = import <文件>; }。
   # 每个文件形如 final: prev: { ... }（标准 overlay）。
-  discoverOverlays = root:
+  discoverOverlays =
+    root:
     let
       dir = root + "/modules/overlays";
-      isOverlayFile =
-        name: type:
-        type == "regular" && hasSuffix ".nix" name;
+      isOverlayFile = name: type: type == "regular" && hasSuffix ".nix" name;
     in
     mapAttrs' (name: _: {
       name = removeSuffix ".nix" name;

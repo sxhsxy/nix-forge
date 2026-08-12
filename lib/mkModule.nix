@@ -29,7 +29,8 @@
     let
       evaluated = module args;
     in
-    evaluated // {
+    evaluated
+    // {
       meta = (evaluated.meta or { }) // {
         inherit name category description;
         doc = "docs/modules/${category}/${name}.md";

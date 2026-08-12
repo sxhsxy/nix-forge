@@ -253,11 +253,12 @@ mv <生成的文件> modules/<category>/<name>/
 
 ## 11. 代码风格
 
-- 所有 `.nix` 文件用 `nixfmt-rfc-style` 格式化，仓库提供 formatter：
+- 所有 `.nix` 文件用 `nixfmt`（nixpkgs 中 `nixfmt-rfc-style` 与 `nixfmt` 同源）
+  格式化，仓库提供 formatter 包装脚本（自动收集 git 已跟踪的 `.nix` 文件）：
 
 ```bash
-nix fmt          # 一键格式化整个仓库
-nix fmt --check  # 只检查
+nix fmt            # 一键格式化整个仓库（只处理 git 已跟踪的 .nix 文件）
+nix fmt -- --check # 只检查不写入
 ```
 
 - 注释用中文（本仓库是中文优先的个人仓库），标识符、字符串内容用英文；
