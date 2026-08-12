@@ -47,18 +47,28 @@
         (forge-lib.discoverModules ./. "home") // (forge-lib.discoverDualModules ./. "nixos");
       overlaySet = forge-lib.discoverOverlays ./.;
 
-      # 全部模块入口文件（供冒烟检查使用）
-      allModuleFiles =
+      # 全部 .nix 文件（供冒烟检查）：递归收集，含 options.nix/config.nix 等
+      # 所有被模块 import 的文件——只查模块入口会漏掉 import 链里的坏文件。
+      allNixFiles =
         let
-          entries =
-            category:
-            map (n: ./. + "/modules/${category}/${n}/default.nix") (
-              builtins.attrNames (forge-lib.discoverModules ./. category)
-            );
+          collect =
+            dir:
+            let
+              entries = builtins.readDir dir;
+              walk =
+                name: type:
+                if type == "directory" then
+                  collect (dir + "/${name}")
+                else if type == "regular" && nix-lib.hasSuffix ".nix" name then
+                  [
+                    (dir + "/${name}")
+                  ]
+                else
+                  [ ];
+            in
+            nix-lib.concatLists (nix-lib.mapAttrsToList walk entries);
         in
-        entries "nixos"
-        ++ entries "home"
-        ++ map (n: ./. + "/modules/overlays/${n}.nix") (builtins.attrNames overlaySet);
+        collect ./.;
     in
     {
       # ── 对外 API ───────────────────────────────────────────────
@@ -131,7 +141,7 @@
                 HOME = "/tmp";
               }
               (
-                nix-lib.concatMapStringsSep "\n" (f: "nix-instantiate --eval '${f}' >/dev/null") allModuleFiles
+                nix-lib.concatMapStringsSep "\n" (f: "nix-instantiate --eval '${f}' >/dev/null") allNixFiles
                 + "\ntouch $out\n"
               );
         }

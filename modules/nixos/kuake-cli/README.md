@@ -22,6 +22,45 @@ overlay 一处。
 | `programs.kuakeCli.enable` | bool | `false` | 安装 kuake 与 kuake-mcp |
 | `programs.kuakeCli.package` | package | overlay 的 `kuake` | kuake 包，可覆盖 |
 | `programs.kuakeCli.mcpPackage` | package | overlay 的 `kuake-mcp` | kuake-mcp 包，可覆盖 |
+| `programs.kuakeCli.environmentFiles` | list of str | `["$HOME/.config/kuake/.env"]` | 启动前按序加载的 .env 文件列表 |
+
+## 凭证（.env）
+
+kuake / kuake-mcp 是**包装过的二进制**：每次运行前先按序加载
+`environmentFiles` 里的 .env 文件（默认 `$HOME/.config/kuake/.env`），
+把变量导入环境后再执行真正的程序。因此**无需 export、无需复制文件**，
+只需把凭证放进 .env：
+
+```bash
+mkdir -p ~/.config/kuake
+cat > ~/.config/kuake/.env <<'EOF'
+# 浏览器登录 pan.quark.cn → F12 → Network → 复制请求头里的 Cookie
+KUAKE_COOKIE="__pus=xxx; __puus=yyy"
+EOF
+chmod 600 ~/.config/kuake/.env
+kuake user    # 验证
+```
+
+语义与注意事项：
+
+- **不覆盖已存在的环境变量**：shell 里 export 过的变量优先（与 kuake 自身
+  dotenv 语义一致）；多个文件间先到先得；
+- 加载是**安全解析**（逐行 read，不 source / 不 eval），cookie 里的分号、
+  引号不会被执行，无注入风险；
+- 路径支持 `$HOME` 与开头的 `~`（运行时展开）；文件缺失/不可读静默跳过；
+- 选项类型是 **str**，不要用 nix 的 path 字面量——path 会被拷贝进
+  /nix/store，cookie 就泄露了；
+- 文件权限建议 600；密钥文件由你自己管理（不要提交进 git 或 nix 配置，
+  需要声明式密钥管理时用 sops-nix / agenix 与这里共存）。
+
+自定义路径（多个文件按序加载，后加载的不会覆盖先加载的）：
+
+```nix
+programs.kuakeCli.environmentFiles = [
+  "/etc/kuake/base.env"
+  "$HOME/.config/kuake/secret.env"
+];
+```
 
 ## 使用
 
