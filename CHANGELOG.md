@@ -1,0 +1,13 @@
+# Changelog
+
+本仓库所有值得记录的变更（新增/废弃模块、规范修订、破坏性变更）都写在这里，按时间倒序。
+
+## [Unreleased]
+
+### Added
+
+- 仓库骨架：flake 自动发现聚合（nixosModules / homeModules / overlays）、模块冒烟检查（module-eval）、代码风格 formatter
+- 代码组织结构规范 v1.0（docs/structure.md）
+- 新增模块速成指南（docs/authoring.md）
+- 示例模块 `forge-example`（NixOS 四件套）
+- 模块脚手架模板 `#module`

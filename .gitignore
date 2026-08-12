@@ -1,0 +1,10 @@
+# nix build 输出
+result
+result-*
+
+# direnv
+.direnv
+
+# 编辑器
+*.swp
+*~
