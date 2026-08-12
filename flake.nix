@@ -16,10 +16,13 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      lib = nixpkgs.lib;
 
-      # nix-forge 自带的共享纯函数库（lib/ 目录），含模块自动发现逻辑
-      forge-lib = import ./lib { inherit lib; };
+      # nixpkgs 的 lib（内部使用）
+      nix-lib = nixpkgs.lib;
+
+      # nix-forge 自带的共享纯函数库（lib/ 目录），含模块自动发现逻辑，
+      # 作为 flake 的 `lib` 输出导出给消费者
+      forge-lib = import ./lib { lib = nix-lib; };
 
       # ── 模块自动发现（约定优于配置）────────────────────────────
       # 规范见 docs/structure.md：
@@ -46,7 +49,8 @@
     in
     {
       # ── 对外 API ───────────────────────────────────────────────
-      inherit lib;
+      # lib = 本仓库的纯函数库（lib/ 目录），含 discoverModules / discoverOverlays
+      lib = forge-lib;
 
       # 每个模块独立导出；default 为全部模块的合并（模块列表本身即合法模块）
       nixosModules = nixosModules // {
@@ -56,7 +60,7 @@
         default = builtins.attrValues homeModules;
       };
       overlays = overlays // {
-        default = lib.composeManyExtensions (builtins.attrValues overlays);
+        default = nix-lib.composeManyExtensions (builtins.attrValues overlays);
       };
 
       # 脚手架：nix flake init -t github:sxhsxy/nix-forge#module
@@ -113,7 +117,7 @@
                 HOME = "/tmp";
               }
               (
-                lib.concatMapStringsSep "\n" (f: "nix-instantiate --eval '${f}' >/dev/null") allModuleFiles
+                nix-lib.concatMapStringsSep "\n" (f: "nix-instantiate --eval '${f}' >/dev/null") allModuleFiles
                 + "\ntouch $out\n"
               );
         }
